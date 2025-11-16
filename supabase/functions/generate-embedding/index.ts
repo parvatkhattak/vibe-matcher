@@ -24,9 +24,9 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY is not configured');
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
+    if (!GOOGLE_GEMINI_API_KEY) {
+      console.error('GOOGLE_GEMINI_API_KEY is not configured');
       return new Response(
         JSON.stringify({ error: 'API key not configured' }),
         { 
@@ -38,23 +38,29 @@ serve(async (req) => {
 
     console.log('Generating embedding for text:', text.substring(0, 50) + '...');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'text-embedding-3-small',
-        input: text,
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GOOGLE_GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'models/text-embedding-004',
+          content: {
+            parts: [{
+              text: text
+            }]
+          }
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
+      console.error('Gemini API error:', response.status, errorText);
       return new Response(
-        JSON.stringify({ error: `AI gateway error: ${response.status}` }),
+        JSON.stringify({ error: `Gemini API error: ${response.status}` }),
         { 
           status: response.status, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -63,7 +69,7 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const embedding = data.data[0].embedding;
+    const embedding = data.embedding.values;
 
     console.log('Successfully generated embedding with dimension:', embedding.length);
 
